@@ -1,6 +1,6 @@
 # Redis-audit
 
-This script samples a number of the Redis keys in a database and then groups them with other *similar* looking keys. It then displays key 
+This script samples a number of the Redis keys in a database and then groups them with other *similar* looking keys. It then displays key
 metrics around those groups of keys to help you spot where efficiencies can be made in the memory usage of your Redis database.  
 _Warning_: The script cannot be used with AWS Elasticache Redis instances, as the debug command is restricted.
 
@@ -24,19 +24,21 @@ The legacy option looks like this:
 
 You can also specify the arguments with declarations, which also adds the ability to use a Redis URL and pass in authentication credentials:
 
-    redis-audit.rb -h/--host [host] -p/--port [port] -a/--password [password] -d/--dbnum [dbnum] -s/--sample [(optional)sample_size]
-    
+    redis-audit.rb -h/--host [host] -p/--port [port] -t/--timeout [timeout] -a/--password [password] -d/--dbnum [dbnum] -s/--sample [(optional)sample_size] -m/--match [list]
+
     or
-    
+
     redis-audit.rb -u/--url [url] -s/--sample [(optional)sample_size]
-  
+
 - **Host**: Generally this is 127.0.0.1 (Please note, running it remotely will cause the script to take significantly longer)
 - **Port**: The port to connect to (e.g. 6379)
 - **Password**: The Redis password if authentication is required
 - **DBNum**: The Redis database to connect to (e.g. 0)
+- **Timeout**: The timeout to set for the Redis client connection. If you are processing the entire keyspace of a large db, you will want to set this sufficiently high (in seconds).
+- **Matches**: A list of ruby regular expressions to group keys together. E.g. `"/foo:/, /bar:/, /foo:bar/"`
 - **Sample size**: This optional parameter controls how many keys to sample. I recommend starting with 10, then going to 100 initially. This
 will enable you to see that keys are being grouped properly. If you omit this parameter the script samples 10% of your keys. If the sample size is
-greater than the number of keys in the database the script will walk all the keys in the Redis database. **DO NOT** run this with a lot of keys on 
+greater than the number of keys in the database the script will walk all the keys in the Redis database. **DO NOT** run this with a lot of keys on
 a production master database. Keys * will block for a long time and cause timeouts!
 - **Url**: Follows the normal syntax for Redis Urls
 
@@ -64,10 +66,10 @@ a production master database. Keys * will block for a long time and cause timeou
     These keys use 88.14% of the total sampled memory (28.98 MB)  
     None of these keys expire  
     Average last accessed time: 10 days, 6 hours, 13 minutes, 23 seconds - (Max: 12 days, 20 hours, 13 minutes, 10 seconds Min:2 minutes)  
-  
+
     ==============================================================================  
     Summary  
-  
+
     ---------------------------------------------------+--------------+-------------------+---------------------------------------------------  
     Key                                                | Memory Usage | Expiry Proportion | Last Access Time                                    
     ---------------------------------------------------+--------------+-------------------+---------------------------------------------------  
@@ -76,13 +78,16 @@ a production master database. Keys * will block for a long time and cause timeou
     ---------------------------------------------------+--------------+-------------------+---------------------------------------------------  
 
 ## Key Grouping Algorithm
+
+**This is now set via a cmd line option**.
+
 The key grouping algorithm is a good default, but you may require more control over it. There is an array of regular expressions that can be used to help force a group.
 If the key being sampled matches a regular expression, it is grouped with all the keys that match that regex.
 
     @@key_group_regex_list = [/notification/,/user_profile/]
 
 If you don't configure the regular expressions, the script has to find a good match for each key that it finds, which can
-take a significant amount of time, depending on the number of types of keys. If you find the script takes too long to run, 
+take a significant amount of time, depending on the number of types of keys. If you find the script takes too long to run,
 I recommend setting up the regular expressions. Even if you only set the regular expressions for 50% of the keys it will encounter,
 the speedup will still be noticeable.
 
@@ -92,6 +97,6 @@ of regular expressions.
 ## Memory Usage
 The memory usage that the script calculates is based on the serialized length as reported by Redis using the DEBUG OBJECT command.
 This memory usage is not equal to the resident memory taken by the key, but is (hopefully) proportional to it.
-  
+
 ## Other Redis Audit Tools
 - [Redis Sampler](https://github.com/antirez/redis-sampler) - Samples keys for statistics around how often you each Redis value type, and how big the value is. By Antirez.
